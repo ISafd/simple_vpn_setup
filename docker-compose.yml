@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  mt_proxy:
+    image: nineseconds/mtg
+    ports:
+    - 443:3128
+    environment:
+      MTG_CLOAK_PORT: "8443"
+    command: ["run", "${MT_PROXY_SECRET}"]
+    restart: unless-stopped
+
+  mt_proto_old:
+    image: nineseconds/mtg:stable
+    ports:
+    - "444:3128/tcp"
+    - "127.0.0.1:3129:3129/tcp"
+    restart: unless-stopped
+    command: ["${MT_PROXY_OLD_SECRET}"]
+
+  socks:
+    image: serjs/go-socks5-proxy:v0.0.3
+    ports:
+    - "1080:1080/tcp"
+    environment:
+    - PROXY_PASSWORD=${SOCKS_PASSWORD}
+    - PROXY_USER=${SOCKS_USER}
+    restart: unless-stopped
+
+  openvpn:
+    image: kylemanna/openvpn
+    ports:
+    - "1194:1194/udp"
+    volumes:
+    - ./data/openvpn/:/etc/openvpn:rw
+    cap_add:
+    - NET_ADMIN
+    restart: unless-stopped
+
+  wireguard:
+    image: linuxserver/wireguard:1.0.20210914
+    ports:
+    - 51820:51820/udp
+    volumes:
+    - ./data/wireguard/config/:/config/:rw
+    - /lib/modules:/lib/modules:rw
+    cap_add:
+    - NET_ADMIN
+    - SYS_MODULE
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/London"
+      SERVERURL: "51.15.71.210"
+      SERVERPORT: "51820"
+      PEERS: "5"
+      PEERDNS: "auto"
+      INTERNAL_SUBNET: "10.13.13.0"
+      ALLOWEDIPS: "0.0.0.0/0"
+    sysctls:
+    - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
